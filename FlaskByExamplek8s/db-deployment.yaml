@@ -1,0 +1,40 @@
+apiVersion: apps/v1 
+kind: Deployment
+metadata: 
+  creationTimestamp: null 
+  labels: 
+    app: db
+  name: db
+spec: 
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: db
+  strategy: 
+    type: Recreate
+  template: 
+    metadata: 
+      creationTimestamp: null 
+      labels: 
+        app: db
+    spec: 
+      containers: 
+      - image: postgres:11 
+        name: postgres 
+        ports: 
+        - containerPort: 5432 
+        envFrom:
+          - configMapRef:
+              name: postgres-config
+          - secretRef:
+              name: fbe-secret 
+        resources: {} 
+        volumeMounts: 
+        - mountPath: /var/lib/postgresql/data 
+          name: dbdata 
+      restartPolicy: Always 
+      volumes: 
+      - name: dbdata 
+        persistentVolumeClaim: 
+          claimName: dbdata
+status: {}
