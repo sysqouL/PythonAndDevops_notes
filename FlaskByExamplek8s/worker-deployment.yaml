@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata: 
+  name: worker
+  creationTimestamp: null 
+  labels: 
+    app: worker
+spec: 
+  replicas: 1 
+  selector:
+    matchLabels:
+      app: worker        
+  strategy: {} 
+  template: 
+    metadata: 
+      creationTimestamp: null 
+      labels: 
+        app: worker 
+    spec: 
+      containers: 
+      - args: 
+        - worker.py 
+        env: 
+        - name: APP_SETTINGS 
+          value: config.ProductionConfig 
+        - name: DBPASS 
+          valueFrom: 
+            secretKeyRef: 
+              name: fbe-secret 
+              key: dbpass 
+        - name: DATABASE_URL 
+          value: postgresql://wordcount_dbadmin:$(DBPASS)@db/wordcount 
+        - name: REDISTOGO_URL 
+          value: redis://redis:6379 
+        image: griggheo/flask-by-example:v1 
+        name: worker 
+        resources: {} 
+      restartPolicy: Always
+      imagePullSecrets:
+      - name: myregistrykey
+status: {}
