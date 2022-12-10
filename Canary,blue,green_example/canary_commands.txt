@@ -1,0 +1,6 @@
+kubectl create deployment time-service --image={dockerhub}/{time-service:xxx} --dry-run=client -o yaml - в холостом режиме выводит YAML структуру 
+Создаем YAML файл канареечного развертывания указывая доп метку release: canary
+kubectl apply -f путь к развертыванию
+kubectl get deployment,pod,service
+Если minikube кластер - minikube service --url {time-service} для получения ip
+while true; do curl {ip из команды выше}:[порт_NodePort]/time; sleep 1; done
