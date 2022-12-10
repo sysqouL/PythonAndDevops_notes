@@ -1,0 +1,16 @@
+Создаются объекты Deployment с метками green и blue и с разными названиями 
+Создаются объекты Service с метками version: green и blue
+При использовании kubectl apply -f <сервис green/blue> будет использоваться указанная версия 
+
+Для проверки:
+kubectl port-forward service/time-service {8080}
+while true; do curl {0.0.0.0}:{8080}/time; sleep 1; done
+kubectl get pods --selector app={имя метки}
+
+Для ручной отладки pod можно использовать метки:
+kubectl label pod {имя} debg=true app={}
+
+Аннотации в YAML:
+# аннотации объекта
+annotations:
+  owner: {}
