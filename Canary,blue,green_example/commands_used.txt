@@ -1,0 +1,58 @@
+Параметры кластера:
+kubectl config current-context
+kubectl cluster-info
+kubectl get nodes
+
+Создание образа:
+docker build . -t {учетная_запись_Docker}/{time-service:0.1.0}
+docker run -d -p 8080:8080 {...}/{time-service:0.1.0}
+curl localhost:8080/nanotime
+curl localhost:8080/time
+
+Сохранение образа:
+docker push {учетная_запись_Docker}/{time-service:0.1.0}
+minikube image load {...}/{time-service:0.1.0} - для локальных кластеров не использующих удаленный репозиторий
+
+Развертывание:
+kubectl create deployment time-service --image {ваша_учетная_запись_Docker}/{time-service:0.1.0}
+kubectl get deployment,pod -o wide
+kubectl describe {pod/deployment} {имя}
+kubectl get events
+
+Сервис:
+kubectl expose deployment {time-service} --port={8080} --type={NodePort}
+kubectl get services
+culr localhost:{порт}/{time/nanotime}
+В случае minikube виртуальная машина имеет отдельный сетевой адрес, и узнать его адрес проще всего, используя встроенную команду minikube service --url, указав имя сервиса,
+доступ к которому мы хотели бы получить:
+minikube service --url {time-service}
+curl http://{ip}:{port}/{time/nanotime}
+
+Переадресация портов:
+kubectl port-forward service/time-service {порт машины}/{порт контейнера}
+
+Журналы:
+kubectl logs {deployment}/{time-service}
+kubectl logs {deployment}/{time-service} -f
+
+Горизонтальное масштабирование - ручное и автоматическое:
+kubectl scale --replicas=3 {deployment}/{time-service}
+kubectl get pods -o wide
+minikube addons enable metrics-server - сервер метрик поставляет информацию о процессоре и памяти
+kubectl autoscale {deployment}/{time-service} --min={1} --max={3} --cpu-percent={80}
+
+Удаление:
+kubectl delete {deployment/service}/{time-service}
+
+Развертывание YAML:
+kubectl create deployment time-service --image={dockerhub}/{time-service:xxx} --dry-run=client -o yaml - в холостом режиме выводит YAML структуру 
+kubectl create -f {развертывание}.yaml
+
+Сервис YAML:
+kubectl expose deployment {time-service} --port={8080} --type={NodePort} --dry-run=client -o yaml
+
+kubectl delete -f {}/{YAML файлы}
+kubectl create -f {}/{YAML файлы}
+kubectl apply -f {}/{YAML файлы} - декларативное управление 
+
+
