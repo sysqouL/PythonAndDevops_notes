@@ -16,6 +16,8 @@ metadata:
 spec:
   # Количество запущенных отсеков pods для масштабирования
   replicas: 1
+  # максимальное количество редакций (revisions)
+  revisionHistoryLimit: 5
   selector:
     matchLabels:
       app: time-service
