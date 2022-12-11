@@ -1,0 +1,84 @@
+Непрерывное обновление (rolling update)
+kubectl apply -f k8s/{} - запускаем первую версию
+kubectl apply -f k8s/update/{} - запускаем обновленную версию
+
+Проверяем работоспособность:
+kubectl port-forward service/time-service {8080}
+while true; do curl localhost:{8080}/time; sleep 1; done
+
+История обновлений, откат версий :
+kubectl rollout history deploy time-service
+Хорошей практикой является использование аннотации kubernetes.io/change-cause - именно ее значение и показано в списке редакций обновления:
+annotations:
+  kubernetes.io/change-cause: Updated version to {0.2.0}
+
+Для примера "сломанной" версии:
+kubectl apply -f k8s/update/broken - в YAML файле указана несуществующая версии 1.0.0
+kubectl get pods - будут выведены незапущенные pods
+kubectl rollout history deploy time-service
+kubectl rollout undo deploy time-service - откат к предидущей версии или к определённой --to-revision={номер}
+Текущая редакция развертывания всегда является последней, и ее номер всегда увеличивается по порядку
+
+kubectl get replicasets - для каждой редакции развертывания создается свой объект ReplicaSet (набор экземпляров, или реплик, отсеков с контейнерами)
+spec:
+  # максимальное количество редакций (revisions)
+  revisionHistoryLimit: 5
+
+Стратегии развертывания:
+- Recreate - развертывание заново. Удаляет все существующие отсеки (pods), и только потом создает новые. Как легко видеть, в случае проблем с новым развертыванием
+или контейнерами, микросервис сразу же перестает быть доступным. Эту стратегию конечно не стоит использовать в эксплуатации (production), но она может быть полезна,
+чтобы полностью стереть состояние предыдущих отсеков и контейнеров, например в кластере для разработки и отладки.
+- RollingUpdate - знакомая нам стратегия непрерывного обновления по умолчанию. Запускает новые отсеки pods по одному, проверяет что они успешно запущены, и
+только после этого заканчивает работу отсеков с предыдущими версиями. Как мы уже видели, очень хороша для истории обновлений, легких откатов к прошлым версиям, и
+бесперебойной работы вашего сервиса.
+
+Стратегия RollingUpdate имеет дополнительные настройки, крайне полезные в зависимости от типа микросервиса или приложения, и изменений в его логике и функциональности.
+• maxSurge - насколько можно превысить желаемое (desired) количество отсеков pods. Если мы хотим, что наш сервис работал в 2 экземплярах, то значение – 1 - разрешает развертыванию 
+создавать максимум три экземпляра, как правило два старой версии, один новой, потом два новой, один старой, и так далее.
+– 50% - делает все то же самое, но в случае автоматически масштабируемого развертывания учитывает, сколько отсеков работает на данный момент, вместо использования точного числа.
+• maxUnavailable - дополняющая настройка к первой, имеющая такие же возможные абсолютные и процентные значения. Она указывает, насколько можно уменьшить количество желаемых отсеков, 
+уменьшая доступность сервиса с целью экономии времени и ресурсов
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 2
+kubectl get pods -w
+
+Проверка готовности сервиса к работе:
+# обновленная версия контейнера в отсеке, вместе с проверкой готовности
+    spec:
+      containers:
+      - image: sysqoul/time-service:0.2.0
+        name: time-service
+        readinessProbe:
+             httpGet:
+               path: /time
+               port: 8080
+             periodSeconds: 2
+             initialDelaySeconds: 5
+             failureThreshold: 2
+             successThreshold: 1
+
+Горизонтальное автоматическое масштабирование (horizontal pod autoscaling):
+minikube addons enable metrics-server
+kubectl top node
+kubectl top pods
+kubectl autoscale deployment/time-service --min=1 --max=3 --cpu-percent=80 --dry-run=client -o yaml
+kubectl apply -f k8s/autoscale/{}
+
+Проверка жизнеспособности (liveness):
+    spec:
+      containers:
+      - image: sysqoul/time-service:0.2.0
+        name: time-service
+        livenessProbe:
+             httpGet:
+               path: /time
+               port: 8080
+             periodSeconds: 2
+             initialDelaySeconds: 5
+             failureThreshold: 2
+             successThreshold: 1  
+
+
